@@ -1,8 +1,7 @@
-
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { useEvents } from "@/hooks/useEvents";
 import type { Event } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,16 +12,23 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { EventForm } from "@/components/EventForm";
 
-export default function EventDetailPage() {
+function EventPageContent() {
   const router = useRouter();
-  const params = useParams();
+  const searchParams = useSearchParams();
   const { getEvent, deleteEvent } = useEvents();
   const [event, setEvent] = useState<Event | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const { toast } = useToast();
 
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const id = searchParams.get('id');
+  const mode = searchParams.get('mode') || 'view';
+
+  useEffect(() => {
+    setIsEditMode(mode === 'edit');
+  }, [mode]);
 
   useEffect(() => {
     if (id) {
@@ -69,6 +75,38 @@ export default function EventDetailPage() {
     }
   };
 
+  if (isEditMode) {
+    return (
+      <div className="container mx-auto p-4 md:p-6 max-w-2xl">
+        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Event
+        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Edit Event</CardTitle>
+            <CardDescription>Update the details of your financial event.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!event ? (
+              <div className="space-y-8">
+                <Skeleton className="h-10 w-full" />
+                <div className="grid grid-cols-2 gap-8">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            ) : (
+              <EventForm event={event} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-2xl">
       <div className="flex justify-between items-center mb-4">
@@ -77,7 +115,7 @@ export default function EventDetailPage() {
           Back
         </Button>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.push(`/event/${id}/edit`)}>
+            <Button variant="outline" onClick={() => router.push(`/event?id=${id}&mode=edit`)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
             </Button>
@@ -181,5 +219,20 @@ export default function EventDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function EventPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4 md:p-6 max-w-2xl">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    }>
+      <EventPageContent />
+    </Suspense>
   );
 }
